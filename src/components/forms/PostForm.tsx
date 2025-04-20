@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -14,24 +13,65 @@ import { Input } from "@/components/ui/input";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import FileUploader from "../shared/FileUploader";
+import { PostValidation } from "@/lib/validation";
+import { Models } from "appwrite";
+import { useCreatePost } from "@/lib/react-query/queriesAndMutations";
+import { useUserContext } from "@/context/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
-const PostForm = () => {
-  const formSchema = z.object({
-    username: z.string().min(2).max(50),
-  });
+type PostFormProps = {
+  post?: Models.Document;
+};
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+const PostForm = ({ post }: PostFormProps) => {
+  const { mutateAsync: createPost, isPending: isLoadingCreate } =
+    useCreatePost();
+
+  const navigate = useNavigate();
+
+  const { user } = useUserContext();
+
+  const form = useForm<z.infer<typeof PostValidation>>({
+    resolver: zodResolver(PostValidation),
     defaultValues: {
-      username: "",
+      caption: post ? post?.caption : "",
+      file: [],
+      location: post ? post?.location : "",
+      tags: post ? post.tags.join(",") : "",
     },
   });
 
-  // 2. Define a submit handler.
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof PostValidation>) {
+    try {
+      const newPost = await createPost({
+        ...values,
+        userId: user.id,
+      });
+
+      if (!newPost) {
+        toast({
+          title: "Failed to create post",
+          description: "Please try again later",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success!",
+        description: "Post created successfully",
+      });
+
+      navigate("/");
+    } catch (error) {
+      console.error("Error submitting post:", error);
+      toast({
+        title: "Error creating post",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    }
   }
 
   return (
@@ -48,7 +88,6 @@ const PostForm = () => {
               <FormLabel className="shad-form_label">Caption</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="shadcn"
                   {...field}
                   className="shad-textarea custom-scrollbar"
                 />
@@ -65,7 +104,10 @@ const PostForm = () => {
             <FormItem>
               <FormLabel className="shad-form_label">Add Photos</FormLabel>
               <FormControl>
-                <FileUploader fieldChange={} />
+                <FileUploader
+                  fieldChange={field.onChange}
+                  mediaUrl={post?.imageUrl}
+                />
               </FormControl>
               <FormMessage className="shad-form_message" />
             </FormItem>
@@ -79,7 +121,7 @@ const PostForm = () => {
             <FormItem>
               <FormLabel className="shad-form_label">Add Location</FormLabel>
               <FormControl>
-                <Input type="text" className="shad-input" />
+                <Input type="text" className="shad-input" {...field} />
               </FormControl>
               <FormMessage className="shad-form_message" />
             </FormItem>
@@ -99,6 +141,7 @@ const PostForm = () => {
                   type="text"
                   className="shad-input"
                   placeholder="Travel, Art, Food"
+                  {...field}
                 />
               </FormControl>
               <FormMessage className="shad-form_message" />
@@ -113,7 +156,7 @@ const PostForm = () => {
             type="submit"
             className="shad-button_primary whitespace-nowrap"
           >
-            Submit
+            Create
           </Button>
         </div>
       </form>

@@ -1,6 +1,6 @@
 import { ID, Query } from "appwrite";
-import { INewUser } from "@/types";
-import { account, appwriteConfig, avatars, databases } from "./config";
+import { INewPost, INewUser } from "@/types";
+import { account, appwriteConfig, avatars, databases, storage } from "./config";
 
 export async function createUserAccount(user: INewUser) {
   try {
@@ -90,4 +90,128 @@ export async function signOutAccount() {
   } catch (error) {
     console.log(error);
   }
+}
+export async function createPost(post: INewPost) {
+  try {
+    // Uploaded image to appwrite Storage
+    const uploadedFile = await uploadFile(post.file[0]);
+    if (!uploadedFile) throw Error;
+
+    // Get the file URL
+    let fileUrl;
+    try {
+      fileUrl = await getFilePreview(uploadedFile.$id);
+      console.log("File URL length:", fileUrl.toString().length);
+    } catch (error) {
+      deleteFile(uploadedFile.$id);
+      throw new Error("Failed to generate file preview");
+    }
+
+    if (!fileUrl) {
+      deleteFile(uploadedFile.$id);
+      throw Error;
+    }
+
+    // Convert tags to array
+    const tags = post.tags?.replace(/ /g, "").split(",");
+
+    try {
+      const newPost = await databases.createDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.postCollectionID,
+        ID.unique(),
+        {
+          creator: post.userId,
+          caption: post.caption,
+          imageUrl: fileUrl.toString(),
+          imageId: uploadedFile.$id,
+          location: post.location,
+          tags: tags,
+        }
+      );
+
+      return newPost;
+    } catch (error) {
+      await deleteFile(uploadedFile.$id);
+      console.error("Error creating post:", error);
+      throw error;
+    }
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}
+
+export async function uploadFile(file: File) {
+  try {
+    const uploadedFile = await storage.createFile(
+      appwriteConfig.storageId,
+      ID.unique(),
+      file
+    );
+    return uploadedFile;
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+export async function getFilePreview(fileId: string) {
+  try {
+    // Add width parameter to reduce the image size and URL length
+    const fileUrl = storage.getFilePreview(
+      appwriteConfig.storageId,
+      fileId,
+      800, // Set a reasonable width
+      800, // Set a reasonable height
+      "top", // Crop position
+      100 // Quality
+    );
+
+    if (!fileUrl) {
+      deleteFile(fileId);
+      throw Error;
+    }
+
+    // Check if URL length is within Appwrite's limits
+    if (fileUrl.toString().length > 2000) {
+      console.warn("Generated URL is too long, trying with smaller dimensions");
+      // Try again with smaller dimensions if still too large
+      const smallerFileUrl = storage.getFilePreview(
+        appwriteConfig.storageId,
+        fileId,
+        400, // Smaller width
+        400, // Smaller height
+        "top", // Crop position
+        80 // Lower quality
+      );
+      return smallerFileUrl;
+    }
+
+    return fileUrl;
+  } catch (error) {
+    console.log(error);
+    throw new Error("Failed to generate file preview");
+  }
+}
+
+export async function deleteFile(fileId: string) {
+  try {
+    await storage.deleteFile(appwriteConfig.storageId, fileId);
+    return {
+      status: "ok",
+    };
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+export async function getRecentPosts() {
+  const posts = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.postCollectionID,
+    [Query.orderDesc("$createdAt"), Query.limit(20)]
+  );
+
+  if (!posts) throw Error;
+  return posts;
 }
