@@ -155,7 +155,7 @@ export async function uploadFile(file: File) {
   }
 }
 
-export async function getFilePreview(fileId: string) {
+export function getFilePreview(fileId: string) {
   try {
     // Add width parameter to reduce the image size and URL length
     const fileUrl = storage.getFilePreview(
@@ -172,20 +172,20 @@ export async function getFilePreview(fileId: string) {
       throw Error;
     }
 
-    // Check if URL length is within Appwrite's limits
-    if (fileUrl.toString().length > 2000) {
-      console.warn("Generated URL is too long, trying with smaller dimensions");
-      // Try again with smaller dimensions if still too large
-      const smallerFileUrl = storage.getFilePreview(
-        appwriteConfig.storageId,
-        fileId,
-        400, // Smaller width
-        400, // Smaller height
-        "top", // Crop position
-        80 // Lower quality
-      );
-      return smallerFileUrl;
-    }
+    // // Check if URL length is within Appwrite's limits
+    // if (fileUrl.toString().length > 2000) {
+    //   console.warn("Generated URL is too long, trying with smaller dimensions");
+    //   // Try again with smaller dimensions if still too large
+    //   const smallerFileUrl = storage.getFilePreview(
+    //     appwriteConfig.storageId,
+    //     fileId,
+    //     400, // Smaller width
+    //     400, // Smaller height
+    //     "top", // Crop position
+    //     80 // Lower quality
+    //   );
+    //   return smallerFileUrl;
+    // }
 
     return fileUrl;
   } catch (error) {
@@ -214,4 +214,70 @@ export async function getRecentPosts() {
 
   if (!posts) throw Error;
   return posts;
+}
+
+export async function likePost(postId: string, likesArray: string[]) {
+  try {
+    const updatedPost = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.postCollectionID,
+      postId,
+      {
+        likes: likesArray,
+      }
+    );
+
+    if (!updatedPost) {
+      throw Error;
+    }
+
+    return updatedPost;
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+export async function savePost(postId: string, userId: string) {
+  try {
+    // Ensure we're using the correct format for relationships
+    // For Appwrite relationships, you need to use the exact document ID string
+    const updatedPost = await databases.createDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.savesCollectionID,
+      ID.unique(),
+      {
+        user: userId, // This should be the user document ID string
+        post: postId, // This should be the post document ID string
+      }
+    );
+
+    if (!updatedPost) {
+      throw Error;
+    }
+
+    return updatedPost;
+  } catch (error) {
+    console.log(error);
+    throw error; // Re-throw to handle in the UI
+  }
+}
+
+export async function deleteSavedPost(savedRecordId: string) {
+  try {
+    const statusCode = await databases.deleteDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.savesCollectionID,
+      savedRecordId
+    );
+
+    if (!statusCode) {
+      throw Error;
+    }
+
+    return {
+      status: "ok",
+    };
+  } catch (error) {
+    console.log(error);
+  }
 }
