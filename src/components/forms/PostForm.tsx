@@ -15,18 +15,30 @@ import { Textarea } from "../ui/textarea";
 import FileUploader from "../shared/FileUploader";
 import { PostValidation } from "@/lib/validation";
 import { Models } from "appwrite";
-import { useCreatePost } from "@/lib/react-query/queriesAndMutations";
+import {
+  useCreatePost,
+  useDeletePost,
+  useUpdatePost,
+} from "@/lib/react-query/queriesAndMutations";
 import { useUserContext } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import Loader from "../shared/Loader";
 
 type PostFormProps = {
   post?: Models.Document;
+  action: "Create" | "Update";
 };
 
-const PostForm = ({ post }: PostFormProps) => {
+const PostForm = ({ post, action }: PostFormProps) => {
   const { mutateAsync: createPost, isPending: isLoadingCreate } =
     useCreatePost();
+
+  const { mutateAsync: updatePost, isPending: isLoadingUpdate } =
+    useUpdatePost();
+
+  // const { mutateAsync: deletePost, isPending: isLoadingDelete } =
+  //   useDeletePost();
 
   const navigate = useNavigate();
 
@@ -44,6 +56,21 @@ const PostForm = ({ post }: PostFormProps) => {
 
   async function onSubmit(values: z.infer<typeof PostValidation>) {
     try {
+      if (post && action === "Update") {
+        const updatedPost = await updatePost({
+          ...values,
+          postId: post.$id,
+          imageId: post?.imageId,
+          imageUrl: post.imageUrl,
+        });
+
+        if (!updatedPost) {
+          toast({ title: "Please Try again" });
+        }
+
+        return navigate(`/posts/${post.$id}`);
+      }
+
       const newPost = await createPost({
         ...values,
         userId: user.id,
@@ -68,7 +95,8 @@ const PostForm = ({ post }: PostFormProps) => {
       console.error("Error submitting post:", error);
       toast({
         title: "Error creating post",
-        description: error instanceof Error ? error.message : "Please try again",
+        description:
+          error instanceof Error ? error.message : "Please try again",
         variant: "destructive",
       });
     }
@@ -153,10 +181,12 @@ const PostForm = ({ post }: PostFormProps) => {
             Cancel
           </Button>
           <Button
+            disabled={isLoadingUpdate || isLoadingCreate}
             type="submit"
             className="shad-button_primary whitespace-nowrap"
           >
-            Create
+            {isLoadingCreate || (isLoadingUpdate && <Loader />)}
+            {action === "Create" ? "Create Post" : "Update Post"}
           </Button>
         </div>
       </form>
