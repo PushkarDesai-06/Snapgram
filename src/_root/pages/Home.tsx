@@ -18,10 +18,10 @@ const Home = () => {
             <Loader />
           ) : (
             <ul className="flex flex-col flex-1 gap-9 w-full">
-              {posts?.documents.map((post: Models.Document) => {
+              {posts?.documents.map((post: Models.Document, ind) => {
                 return (
                   <li key={post.$id}>
-                    <PostCard post={post} />
+                    <PostCard post={post} key={ind} />
                   </li>
                 );
               })}
