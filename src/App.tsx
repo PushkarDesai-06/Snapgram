@@ -1,7 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import "./globals.css";
 import SignInForm from "./_auth/forms/SignInForm";
-import { Client } from "appwrite";
 
 import {
   CreatePost,
