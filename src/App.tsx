@@ -1,6 +1,8 @@
 import { Route, Routes } from "react-router-dom";
 import "./globals.css";
 import SignInForm from "./_auth/forms/SignInForm";
+import { Client } from "appwrite";
+
 import {
   CreatePost,
   EditPost,
@@ -18,6 +20,7 @@ import RootLayout from "./_root/RootLayout";
 import { Toaster } from "./components/ui/toaster";
 
 const App = () => {
+
   return (
     <main className="flex h-screen">
       <Routes>
