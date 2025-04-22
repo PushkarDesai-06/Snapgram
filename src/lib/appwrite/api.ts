@@ -142,6 +142,18 @@ export async function createPost(post: INewPost) {
   }
 }
 
+// Add this function to your api.ts file
+
+export async function hasActiveSession(): Promise<boolean> {
+  try {
+    const session = await account.getSession('current');
+    return !!session; // Returns true if session exists
+  } catch (error) {
+    // If there's an error (like no session found), return false
+    return false;
+  }
+}
+
 export async function uploadFile(file: File) {
   try {
     const uploadedFile = await storage.createFile(

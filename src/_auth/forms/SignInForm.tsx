@@ -18,6 +18,8 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useSignInAccount } from "@/lib/react-query/queriesAndMutations";
 import { useUserContext } from "@/context/AuthContext";
+import { hasActiveSession } from "@/lib/appwrite/api";
+import { useEffect } from "react";
 
 const SignInForm = () => {
   const { toast } = useToast();
@@ -27,6 +29,17 @@ const SignInForm = () => {
   const { checkAuthUser, isLoading: isUserLoading } = useUserContext();
 
   const { mutateAsync: signInAccount } = useSignInAccount();
+
+  useEffect(() => {
+    async function isLoggedIn() : Promise<void>  {
+
+      const isLoggedIn = await hasActiveSession();
+      if (isLoggedIn) navigate("/");
+    }
+
+    isLoggedIn()
+
+  }, []);
 
   const form = useForm<z.infer<typeof SigninValidation>>({
     resolver: zodResolver(SigninValidation),

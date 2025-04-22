@@ -21,8 +21,20 @@ import {
   useSignInAccount,
 } from "@/lib/react-query/queriesAndMutations";
 import { useUserContext } from "@/context/AuthContext";
+import { useEffect } from "react";
+import { hasActiveSession } from "@/lib/appwrite/api";
 
 const SignUpForm = () => {
+
+  useEffect(() => {
+    async function isLoggedIn(): Promise<void> {
+      const isLoggedIn = await hasActiveSession();
+      if (isLoggedIn) navigate("/");
+    }
+
+    isLoggedIn();
+  }, []);
+
   const { toast } = useToast();
 
   const navigate = useNavigate();
